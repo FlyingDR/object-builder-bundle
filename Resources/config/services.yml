@@ -1,0 +1,11 @@
+parameters: ~
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Flying\ObjectBuilderBundle\:
+        resource: '../../*'
+        exclude: '../../{Tests}'
