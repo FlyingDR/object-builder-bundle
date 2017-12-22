@@ -2,10 +2,8 @@
 
 namespace Flying\ObjectBuilderBundle\DependencyInjection\Compiler;
 
+use Flying\ObjectBuilder\Handler\HandlerInterface;
 use Flying\ObjectBuilder\ObjectBuilder;
-use Flying\ObjectBuilder\TargetProvider\TargetProviderInterface;
-use Flying\ObjectBuilder\TypeConverter\TypeConverterInterface;
-use Flying\ObjectBuilder\ValueAssigner\ValueAssignerInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -30,25 +28,12 @@ class DefaultHandlersRegistrationPass implements CompilerPassInterface
      */
     public function process(ContainerBuilder $container): void
     {
-        // Register object builder in container
-        $builderDefinition = new Definition();
-        $builderDefinition
-            ->setClass(ObjectBuilder::class)
-            ->setPublic(true);
-        $container->setDefinition(ObjectBuilder::class, $builderDefinition);
-        $container->setAlias('flying.object_builder', ObjectBuilder::class);
-
         // Try to find all default handlers for object builder and register them too
         $finder = new Finder();
         $finder
             ->files()
-            ->in(\dirname((new \ReflectionClass($builderDefinition->getClass()))->getFileName()))
+            ->in(\dirname((new \ReflectionClass(ObjectBuilder::class))->getFileName()))
             ->name('*.php');
-        $tagsMap = [
-            TargetProviderInterface::class => 'flying.object_builder.target_provider',
-            TypeConverterInterface::class  => 'flying.object_builder.type_converter',
-            ValueAssignerInterface::class  => 'flying.object_builder.value_assigner',
-        ];
         /** @var \SplFileInfo $file */
         foreach ($finder as $file) {
             $fqcn = $this->getFqcn($file->getPathname());
@@ -56,16 +41,10 @@ class DefaultHandlersRegistrationPass implements CompilerPassInterface
             if (!$reflection->isInstantiable()) {
                 continue;
             }
-            $tags = [];
-            foreach ($tagsMap as $interface => $tag) {
-                if ($reflection->implementsInterface($interface)) {
-                    $tags[$tag] = [];
-                }
-            }
-            if (!empty($tags)) {
+            if ($reflection->implementsInterface(HandlerInterface::class)) {
                 $definition = new Definition($reflection->getName());
                 $definition->setPublic(false);
-                $definition->setTags($tags);
+                $definition->addTag('flying.object_builder.handler');
                 $container->setDefinition($reflection->getName(), $definition);
             }
         }
