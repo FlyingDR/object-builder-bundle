@@ -68,6 +68,9 @@ class DefaultHandlersRegistrationPass implements CompilerPassInterface
             if (feof($fp)) {
                 break;
             }
+            if ($namespace && $class) {
+                break;
+            }
 
             $buffer .= fread($fp, 512);
             $level = error_reporting(0);
@@ -80,7 +83,7 @@ class DefaultHandlersRegistrationPass implements CompilerPassInterface
 
             $count = \count($tokens);
             for (; $i < $count; $i++) {
-                if ($tokens[$i][0] === T_NAMESPACE) {
+                if (!$namespace && $tokens[$i][0] === T_NAMESPACE) {
                     for ($j = $i + 1; $j < $count; $j++) {
                         if ($tokens[$j][0] === T_STRING) {
                             $namespace .= '\\' . $tokens[$j][1];
@@ -92,10 +95,11 @@ class DefaultHandlersRegistrationPass implements CompilerPassInterface
                     }
                 }
 
-                if ($tokens[$i][0] === T_CLASS || $tokens[$i][0] === T_INTERFACE) {
+                if (!$class && ($tokens[$i][0] === T_CLASS || $tokens[$i][0] === T_INTERFACE)) {
                     for ($j = $i + 1; $j < $count; $j++) {
                         if ($tokens[$j] === '{') {
                             $class = $tokens[$i + 2][1];
+                            break;
                         }
                     }
                 }
